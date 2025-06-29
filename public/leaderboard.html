@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Leaderboard</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+ <link rel="stylesheet" href="style4.css" />
+
+</head>
+<audio id="leaderboardSound" src="assets/audio/leaderboard.mp3" autoplay></audio>
+<body class="flex items-center justify-center min-h-screen">
+  
+
+  <div class="blur-bg p-6 rounded-2xl shadow-xl w-full max-w-3xl text-center">
+    <h1 class="text-3xl font-extrabold text-yellow-600 mb-6">🏆 Leaderboard Tebak Gambar Rumah Adat 🏆</h1>
+
+    <div class="flex justify-center items-end gap-6 mb-6">
+      <div id="second" class="podium-box silver">
+        <div class="podium-rank">🥈</div>
+        <div id="secondName" class="font-bold mt-4">-</div>
+        <div id="secondScore" class="text-sm">- poin</div>
+      </div>
+      <div id="first" class="podium-box gold">
+        <div class="podium-rank">🥇</div>
+        <div id="firstName" class="font-bold mt-4">-</div>
+        <div id="firstScore" class="text-sm">- poin</div>
+      </div>
+      <div id="third" class="podium-box bronze">
+        <div class="podium-rank">🥉</div>
+        <div id="thirdName" class="font-bold mt-4">-</div>
+        <div id="thirdScore" class="text-sm">- poin</div>
+      </div>
+    </div>
+
+    <h2 class="text-xl font-semibold text-gray-800 mb-2">Peringkat Lainnya</h2>
+    <ul id="leaderboardList" class="text-left max-w-md mx-auto text-gray-800 text-sm space-y-2 mb-6"></ul>
+
+    <div class="flex justify-center gap-4">
+      <button id="mainLagiBtn" class="bg-blue-600 text-white mt-4 px-4 py-2 rounded hover:bg-blue-700">
+   Main Lagi
+    </button>
+      <a href="index.html" class="bg-white hover:bg-gray-100 text-blue-700 px-4 py-2 rounded border">Kembali ke Menu</a>
+    </div>
+  </div>
+
+ <script>
+  async function init() {
+    const roomCode = localStorage.getItem("roomCode");
+    if (!roomCode) {
+      alert("Room tidak ditemukan.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:3000/api/leaderboard?code=${roomCode}`);
+      const leaderboard = await res.json();
+
+      function updatePodium(id, name, score) {
+        document.getElementById(id + "Name").textContent = name || "-";
+        document.getElementById(id + "Score").textContent = score != null ? `${score} poin` : "- poin";
+      }
+
+      updatePodium("first", leaderboard[0]?.name, leaderboard[0]?.score);
+      updatePodium("second", leaderboard[1]?.name, leaderboard[1]?.score);
+      updatePodium("third", leaderboard[2]?.name, leaderboard[2]?.score);
+
+      const list = document.getElementById("leaderboardList");
+      leaderboard.slice(3).forEach((player, i) => {
+        const li = document.createElement("li");
+        li.innerHTML = `<strong>${i + 4}.</strong> ${player.name} - ${player.score} poin`;
+        list.appendChild(li);
+      });
+
+    } catch (err) {
+      console.error("❌ Gagal memuat leaderboard dari DB:", err);
+      document.getElementById("leaderboardList").innerHTML = `<li class="text-red-600">Gagal memuat data.</li>`;
+    }
+
+    document.getElementById("mainLagiBtn")?.addEventListener("click", mainLagi);
+  }
+
+  function mainLagi() {
+    const myName = sessionStorage.getItem("originalName") || localStorage.getItem("playerName");
+    const myRoom = localStorage.getItem("roomCode");
+
+    if (!myName || !myRoom) {
+      alert("Data tidak lengkap.");
+      return window.location.href = "index.html";
+    }
+
+    // Reset status
+    localStorage.setItem("playerName", myName);
+    localStorage.setItem("roomCode", myRoom);
+    localStorage.removeItem("hostId");
+    localStorage.removeItem("hostDrawCount");
+
+    window.location.href = "game.html";
+  } 
+
+  window.addEventListener("DOMContentLoaded", init);
+</script>
+
+
+
+</body>
+</html>

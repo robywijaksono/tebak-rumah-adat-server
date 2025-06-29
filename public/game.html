@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game Tebak Menggambar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <link rel="stylesheet" href="style3.css" />
+</head>
+<body class="min-h-screen w-full flex flex-col justify-center items-center  px-2">
+
+  <audio id="bgMusic" src="assets/audio/backsound.mp3" loop autoplay></audio>
+  <audio id="joinSound" src="assets/audio/join.mp3"></audio>
+  <audio id="leaveSound" src="assets/audio/leave.mp3"></audio>
+  <audio id="correctSound" src="assets/audio/correct.mp3"></audio>
+
+ <!-- === Atas: Info Ruangan, Pemain, Waktu, Clue === -->
+<div class="flex flex gap-10 flex-col sm:flex-row sm:justify-between sm:items-center text-center sm:text-left mb-4">
+  <div>
+    <h2 class="text-sm sm:text-lg font-bold text-black">Ruangan: <span id="roomCodeLabel" class="text-black">ABC123</span></h2>
+    <p class="text-sm font-semibold">Pemain: <span id="playerNameLabel" class="text-black font-semibold">Anonim</span></p>
+  </div>
+
+  <div>
+    <h4 class="text-sm sm:text-lg font-bold text-red-900">Sisa Waktu: <span id="timer">90</span> detik</h4>
+    <div class="flex gap-4 justify-center sm:justify-start text-sm text-black font-semibold">
+      <p>Clue 1: <span id="clue1">-</span></p>
+      <p>Clue 2: <span id="clue2">-</span></p>
+    </div>
+  </div>
+</div>
+
+
+
+  <!-- Popup Pilihan Rumah Adat -->
+  <div id="popupPilihan" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-xl shadow-xl w-11/12 max-w-md text-center">
+      <h2 class="text-xl font-bold mb-4 text-blue-700">Pilih Rumah Adat yang Akan Digambar</h2>
+      <div id="pilihanList" class="space-y-3"></div>
+    </div>
+  </div>
+
+
+
+  <!-- Area Game -->
+  <div class="bg-white bg-opacity-90 rounded-xl p-4 shadow-lg w-full max-w-7xl grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Area Menggambar -->
+    <div class="col-span-2">
+      <div id="gambarContoh" class="w-full mb-2 text-center hidden">
+        <p id="namaRumahLabel" class="text-lg font-bold text-gray-800 mb-1"></p>
+        <p id="asalDaerahLabel" class="text-base text-gray-600 mb-2"></p>
+        <img id="gambarContohImg" src="" alt="Gambar Contoh" class="w-full max-h-40 object-contain rounded border border-gray-300 mx-auto" />
+      </div>
+     <canvas id="drawingCanvas"
+  class="w-full aspect-[4/3] max-w-[100%] sm:max-w-[640px] border border-gray-400 rounded-md bg-white cursor-crosshair"></canvas>
+    <div id="toolbar" class="mt-4 flex gap-4 justify-center items-center hidden">
+  <label class="font-semibold">Warna:</label>
+  <input type="color" id="colorPicker" value="#000000" class="border rounded" />
+  <label class="font-semibold">Spidol:</label>
+  <select id="brushSize" class="border rounded p-1">
+    <option value="2">Tipis</option>
+    <option value="5">Sedang</option>
+    <option value="10">Tebal</option>
+  </select>
+  <button id="clearCanvas"
+    class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Hapus</button>
+</div>
+
+    </div>
+
+    <!-- Info & Chat -->
+    <div class="flex flex-col h-full justify-between">
+      <div class="bg-blue-100 p-2 rounded-lg overflow-y-auto max-h-64 mb-4">
+        <h4 class="font-semibold text-blue-700 mb-2">Pemain:</h4>
+        <ul id="scoreboard" class="space-y-2 text-sm"></ul>
+      </div>
+      <div class="grid grid-cols-1 gap-4 mt-auto">
+        <div>
+          <h4 class="font-semibold text-blue-700 mb-1">Jawaban:</h4>
+          <div class="border rounded p-2 bg-white">
+            <input type="text" id="guessInput" class="w-full p-2 border rounded-md mb-2" placeholder="Tulis jawabanmu di sini..." />
+            <button onclick="submitGuess()" class="w-full bg-green-500 text-white py-2 rounded-md hover:bg-green-600 transition">Jawab</button>
+          </div>
+        </div>
+        <div>
+          <h4 class="font-semibold text-blue-700 mb-1">Obrolan:</h4>
+          <div class="border rounded p-2 bg-white">
+            <div id="chatBox" class="border h-32 overflow-y-auto p-2 bg-white rounded text-sm text-gray-800"></div>
+            <div class="flex mt-2">
+              <input type="text" id="chatInput" class="flex-1 p-2 border rounded-l-md" placeholder="Ketik pesan..." />
+              <button onclick="sendChat()" class="bg-blue-500 text-white px-4 rounded-r-md hover:bg-blue-600 whitespace-nowrap">Kirim</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<script>
+const rumahAdatList = [
+  
+  { nama: "Krong Bade", gambar: "assets/rumahkrongbadeaceh.png", daerah: "Aceh" },
+  { nama: "Lamin", gambar: "assets/rumahlaminkalimantantimur.png", daerah: "Kalimantan Timur" },
+  { nama: "Limas", gambar: "assets/rumahlimassumatraselatan.png", daerah: "Sumatra Selatan" },
+  { nama: "Mod Aki Aksa", gambar: "assets/rumahmodakiaksapapuabarat.png", daerah: "Papua Barat" },
+  { nama: "Musalaki", gambar: "assets/rumahmusalakinusatenggaratimur.png", daerah: "Nusa Tenggara Timur" },
+  { nama: "Nuwo Sesat", gambar: "assets/rumahnuwosesatlampung.png", daerah: "Lampung" },
+  { nama: "Panggung", gambar: "assets/rumahpanggungbangkabelitung.png", daerah: "Bangka Belitung" },
+  { nama: "Panjang", gambar: "assets/rumahpanjangkalimantanbarat.png", daerah: "Kalimantan Barat" },
+  { nama: "Sasadu", gambar: "assets/rumahsasadumalukuutara.png", daerah: "Maluku Utara" },
+  { nama: "Selaso Jatuh Kembar", gambar: "assets/rumahselasojatuhkembarriau.png", daerah: "Riau" },
+  { nama: "Joglo", gambar: "assets/rumahjoglojawatengah.png", daerah: "Jawa Tengah" },
+  { nama: "Joglo", gambar: "assets/rumahjoglojawatimur.png", daerah: "Jawa Timur" },
+  { nama: "Joglo", gambar: "assets/rumahjogloyogyakarta.png", daerah: "DI Yogyakarta" },
+  { nama: "Jolopong", gambar: "assets/rumahjolopongjawabarat.png", daerah: "Jawa Barat" },
+  { nama: "Kajang Lako", gambar: "assets/rumahkajanglakojambi.png", daerah: "Jambi" },
+  { nama: "Kebaya", gambar: "assets/rumahkebayadkijakarta.png", daerah: "DKI Jakarta" },
+  { nama: "Belah Bubung", gambar: "assets/rumahbelahbubungkepulauanriau.png", daerah: "Kepulauan Riau" },
+  { nama: "Betang", gambar: "assets/rumahbetangkalimantantengah.png", daerah: "Kalimantan Tengah" },
+  { nama: "Baanjung", gambar: "assets/rumahbaanjungkalimantanselatan.png", daerah: "Kalimantan Selatan" },
+  { nama: "Boyang", gambar: "assets/rumahboyangsulawesibarat.png", daerah: "Sulawesi Barat" },
+  { nama: "Banua Tada", gambar: "assets/rumahbanuatadasulawesitenggara.png", daerah: "Sulawesi Tenggara" },
+  { nama: "Walewangko", gambar: "assets/rumahwalewangkosulawesiutara.png", daerah: "Sulawesi Utara" },
+  { nama: "Tongkonan", gambar: "assets/rumahtongkonansulawesiselatan.png", daerah: "Sulawesi Selatan" },
+  { nama: "Tambi", gambar: "assets/rumahtambisulawesitengah.png", daerah: "Sulawesi Tengah" },
+  { nama: "Sulah Nyanda", gambar: "assets/rumahsulahnyandabanten.png", daerah: "Banten" },
+  { nama: "Gadang", gambar: "assets/rumahgadangsumatrabarat.png", daerah: "Sumatra Barat" },
+  { nama: "Balai Batak Toba", gambar: "assets/rumahbalaibataktobasumatrautara.png", daerah: "Sumatra Utara" },
+  { nama: "Bubungan Lima", gambar: "assets/rumahbubunganlimabengkulu.png", daerah: "Bengkulu" },
+  { nama: "Baloy", gambar: "assets/rumahbaloykalimantanutara.png", daerah: "Kalimantan Utara" },
+  { nama: "Baileo", gambar: "assets/rumahbaileomaluku.png", daerah: "Maluku" },
+  { nama: "Honai", gambar: "assets/rumahhonaipapua.png", daerah: "Papua" },
+  { nama: "Dulophupa", gambar: "assets/rumahdulohupagorontalo.png", daerah: "Gorontalo" },
+  { nama: "Lamin", gambar: "assets/rumahlaminkalimantantimur.png", daerah: "Kalimantan imur" },
+  { nama: "Dalam Loka", gambar: "assets/rumahdalamlokanusatenggarabarat.png", daerah: "Nusa Tenggara Barat" }
+]
+
+  const socket = io("http://localhost:3000");
+  const playerName = localStorage.getItem("playerName") || sessionStorage.getItem("origi  nalName") || "Anonim";
+  const roomCode = localStorage.getItem("roomCode") || "ABC123";
+  if (!sessionStorage.getItem("originalName")) {
+  sessionStorage.setItem("originalName", playerName);
+}
+  document.getElementById("playerNameLabel").textContent = playerName;
+  document.getElementById("roomCodeLabel").textContent = roomCode;
+  socket.emit("join-room", { name: playerName, roomCode });
+
+  const canvas = document.getElementById("drawingCanvas");
+  const ctx = canvas.getContext("2d");
+
+  const joinSound = document.getElementById("joinSound");
+  const leaveSound = document.getElementById("leaveSound");
+  const correctSound = document.getElementById("correctSound");
+
+  let currentDrawerId = null;
+  let isMyTurn = false;
+  let gambarDipilih = null;
+  let drawing = false;
+  let currentColor = "#000000";
+  let currentSize = 2;
+  let timerInterval = null;
+  let time = 90;
+
+  const colorPicker = document.getElementById("colorPicker");
+  const brushSize = document.getElementById("brushSize");
+  const clearCanvas = document.getElementById("clearCanvas");
+  const toolbar = document.getElementById("toolbar");
+
+
+
+
+// Tetapkan ukuran pasti
+canvas.width = 640;
+canvas.height = 480;
+canvas.style.width = "640px";
+canvas.style.height = "480px";
+
+
+colorPicker.addEventListener("input", e => currentColor = e.target.value);
+brushSize.addEventListener("change", e => currentSize = parseInt(e.target.value));
+clearCanvas.addEventListener("click", () => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  socket.emit("draw", { roomCode, type: "clear" });
+});
+
+canvas.addEventListener("mousedown", () => { if (isMyTurn) drawing = true; });
+canvas.addEventListener("mouseup", () => { drawing = false; ctx.beginPath(); });
+canvas.addEventListener("mouseout", () => { drawing = false; ctx.beginPath(); });
+
+canvas.addEventListener("mousedown", (e) => {
+  if (!isMyTurn) return;
+  drawing = true;
+
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+
+  ctx.beginPath();
+  ctx.moveTo(x * canvas.width, y * canvas.height);
+
+  socket.emit("draw", { roomCode, type: "begin", x, y });
+});
+
+canvas.addEventListener("mouseup", () => {
+  if (!isMyTurn) return;
+  drawing = false;
+});
+
+canvas.addEventListener("mouseout", () => {
+  if (!isMyTurn) return;
+  drawing = false;
+});
+
+canvas.addEventListener("mousemove", (e) => {
+  if (!isMyTurn || !drawing) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+
+  const actualX = x * canvas.width;
+  const actualY = y * canvas.height;
+
+  ctx.lineWidth = currentSize;
+  ctx.strokeStyle = currentColor;
+  ctx.lineCap = "round";
+  ctx.lineTo(actualX, actualY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(actualX, actualY);
+
+  socket.emit("draw", {
+    roomCode,
+    type: "stroke",
+    x,
+    y,
+    color: currentColor,
+    size: currentSize
+  });
+});
+
+
+window.addEventListener("resize", resizeCanvasToDisplaySize);
+
+
+// Update ukuran pixel canvas sesuai display size
+function resizeCanvasToDisplaySize() {
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  canvas.width = width;
+  canvas.height = height;
+}
+resizeCanvasToDisplaySize();
+
+
+socket.on("draw", ({ x, y, type, color, size }) => {
+  const actualX = x * canvas.width;
+  const actualY = y * canvas.height;
+
+  if (type === "begin") {
+    ctx.beginPath();
+    ctx.moveTo(actualX, actualY);
+  } else if (type === "stroke") {
+    ctx.lineWidth = size;
+    ctx.strokeStyle = color;
+    ctx.lineCap = "round";
+    ctx.lineTo(actualX, actualY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(actualX, actualY);
+  } else if (type === "clear") {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+});
+
+
+
+socket.on("player-list", (players) => {
+  const list = document.getElementById("scoreboard");
+  if (list.children.length < players.length) joinSound.play();
+  else if (list.children.length > players.length) leaveSound.play();
+
+  list.innerHTML = "";
+ players.forEach(p => {
+    const li = document.createElement("li");
+    const isDrawer = p.id === currentDrawerId;
+    li.innerHTML = `${isDrawer ? " " : ""}<strong>${p.name}</strong>: ${p.score} poin`;
+    list.appendChild(li);
+  });
+});
+
+socket.on("start-turn", ({ drawerId, drawerName, targetSocketId }) => {
+  isMyTurn = (socket.id === targetSocketId);
+  gambarDipilih = null;
+  clearInterval(timerInterval);
+  document.getElementById("clue1").textContent = "-";
+  document.getElementById("clue2").textContent = "-";
+  document.getElementById("timer").textContent = "90";
+  time = 90;
+
+  // Reset canvas state
+  drawing = false;
+  ctx.beginPath();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (isMyTurn) {
+    console.log("[DEBUG] Ini giliran saya:", playerName);
+    setTimeout(() => showPopupPilihan(), 200);
+    toolbar.classList.remove("hidden");
+    document.getElementById("gambarContoh").classList.remove("hidden");
+    canvas.classList.remove("h-[440px]");
+    canvas.classList.add("h-[240px]");
+  } else {
+    isMyTurn = false;
+    drawing = false;
+    toolbar.classList.add("hidden");
+    document.getElementById("gambarContoh").classList.add("hidden");
+    document.getElementById("popupPilihan").classList.add("hidden");
+    document.getElementById("pilihanList").innerHTML = "";
+    canvas.classList.remove("h-[240px]");
+    canvas.classList.add("h-[440px]");
+  }
+});
+
+
+
+// ✅ Popup hanya muncul jika server bilang (dikirim hanya ke penggambar)
+socket.on("show-popup", () => {
+  console.log("⚠️ Popup MUNCUL karena server kirim sinyal");
+  showPopupPilihan();
+});
+
+
+function sendChat() {
+  const input = document.getElementById("chatInput");
+  const message = input.value.trim();
+  if (message) {
+    socket.emit("chat-message", { roomCode, name: playerName, message });
+    input.value = "";
+  }
+}
+document.getElementById("chatInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") sendChat();
+});
+socket.on("chat-message", ({ name, message }) => {
+  const chatBox = document.getElementById("chatBox");
+  const msgDiv = document.createElement("div");
+  msgDiv.innerHTML = `<strong>${name}:</strong> ${message}`;
+  chatBox.appendChild(msgDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+});
+socket.on("correct-guess", ({ playerName }) => {
+  correctSound.play();
+  const chatBox = document.getElementById("chatBox");
+  const msgDiv = document.createElement("div");
+  msgDiv.innerHTML = `<span class='text-green-600 font-semibold'>✅ ${playerName} menjawab dengan benar.</span>`;
+  chatBox.appendChild(msgDiv);
+  chatBox.scrollTop = chatBox.scrollHeight;
+});
+
+function submitGuess() {
+  if (isMyTurn) {
+    alert("Kamu sedang menggambar dan tidak bisa menebak!");
+    return;
+  }
+
+  const guess = document.getElementById("guessInput").value.trim();
+  const waktu = parseInt(document.getElementById("timer").textContent);
+
+  if (guess) {
+    socket.emit("guess", {
+      roomCode,
+      guess,
+      playerId: socket.id,
+      timeLeft: waktu
+    });
+    document.getElementById("guessInput").value = "";
+  }
+}
+
+
+function showPopupPilihan() {
+  console.log("⚠️ showPopupPilihan dipanggil oleh:", playerName, "| isMyTurn:", isMyTurn);
+      const pilihanList = document.getElementById("pilihanList");
+      pilihanList.innerHTML = "";
+      const pilihan = getRandomPilihan(3);
+      pilihan.forEach(item => {
+        const btn = document.createElement("button");
+        btn.className = "w-full bg-blue-100 rounded-lg p-2 border hover:bg-blue-200";
+        btn.innerHTML = `<img src="${item.gambar}" class="w-full h-24 object-cover rounded mb-1">
+                         <div class="text-blue-700 font-semibold">${item.nama}</div>`;
+        btn.onclick = () => {
+          gambarDipilih = item;
+          document.getElementById("gambarContohImg").src = item.gambar;
+          document.getElementById("namaRumahLabel").textContent = item.nama;
+          document.getElementById("asalDaerahLabel").textContent = item.daerah;
+          document.getElementById("gambarContoh").classList.remove("hidden");
+          document.getElementById("popupPilihan").classList.add("hidden");
+          socket.emit("mulai-timer", { roomCode, gambar: item });
+          socket.emit("pilih-gambar", {
+          roomCode,
+          jawaban: item.nama,
+          daerah: item.daerah
+          });
+
+          startLocalTimer();
+        };
+        pilihanList.appendChild(btn);
+      });
+      document.getElementById("popupPilihan").classList.remove("hidden");
+    }
+
+function getRandomPilihan(jumlah) {
+      const arr = [...rumahAdatList];
+      const hasil = [];
+      while (hasil.length < jumlah && arr.length > 0) {
+        const idx = Math.floor(Math.random() * arr.length);
+        hasil.push(arr.splice(idx, 1)[0]);
+      }
+      return hasil;
+    }
+
+
+ function startLocalTimer() {
+      clearInterval(timerInterval);
+      time = 90;
+      timerInterval = setInterval(() => {
+        time--;
+        document.getElementById("timer").textContent = time;
+
+        if (time <= 0) {
+          clearInterval(timerInterval);
+          socket.emit("next-turn", { roomCode });
+        }
+      }, 1000);
+    }
+
+    
+
+socket.on("mulai-timer", startLocalTimer);
+socket.on("update-timer", (serverTime) => {
+  document.getElementById("timer").textContent = serverTime;
+});
+ socket.on("update-clue", ({ clue1, clue2 }) => {
+      if (clue1) document.getElementById("clue1").textContent = clue1;
+      if (clue2) document.getElementById("clue2").textContent = clue2;
+    });
+socket.on("time-up", () => {
+  alert("Waktu habis!");
+
+  // Reset status
+  isMyTurn = false;
+  gambarDipilih = null;
+  drawing = false;
+  ctx.beginPath();
+
+
+
+  // Sembunyikan alat dan gambar
+  toolbar.classList.add("hidden");
+  document.getElementById("gambarContoh").classList.add("hidden");
+  document.getElementById("popupPilihan").classList.add("hidden");
+
+  // Kembalikan canvas ke mode penonton
+  canvas.classList.remove("h-[240px]");
+  canvas.classList.add("h-[440px]");
+
+  socket.emit("next-turn", { roomCode });
+});
+
+socket.on("turn-info", ({ drawerId }) => {
+  currentDrawerId = drawerId; 
+  if (socket.id !== drawerId) {
+    isMyTurn = false;
+    drawing = false;
+    toolbar.classList.add("hidden");
+    document.getElementById("gambarContoh").classList.add("hidden");
+    document.getElementById("popupPilihan").classList.add("hidden");
+    canvas.classList.remove("h-[240px]");
+    canvas.classList.add("h-[440px]");
+  }
+});
+
+ socket.on("game-over", ({ winnerName, players }) => {
+  alert(`Permainan selesai! Pemenangnya adalah ${winnerName}`);
+  const bgMusic = document.getElementById("bgMusic");
+if (bgMusic) bgMusic.pause();
+
+
+  // 💾 Simpan leaderboard lokal
+  localStorage.setItem("lastGameLeaderboard", JSON.stringify(players));
+
+  window.location.href = "leaderboard.html";
+});
+
+document.addEventListener("click", () => {
+  const bgMusic = document.getElementById("bgMusic");
+  if (bgMusic && bgMusic.paused) {
+    bgMusic.volume = 0.50; // Bisa atur volume sesuai selera
+    bgMusic.play().catch(err => console.warn("Autoplay ditolak:", err));
+  }
+}, { once: true }); // hanya sekali, setelah klik pertama
+
+
+
+
+
+
+</script>
+</body>
+</html>

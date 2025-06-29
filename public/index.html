@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Menu Masuk - Tebak Rumah Adat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style1.css" />
+</head>
+<body class="h-screen w-screen flex items-center justify-center">
+
+  <div class="bg-white p-8 rounded-2xl shadow-2xl w-11/12 max-w-md text-center animate-fade-in responsive-container">
+
+
+  <div class="bg-white bg-opacity-90 p-8 rounded-2xl shadow-2xl w-11/12 max-w-md text-center animate-fade-in">
+    <h1 class="text-3xl font-extrabold text-blue-700 mb-2 drop-shadow-md">
+      Tebak Mengambar Rumah Adat
+    </h1>
+    <p class="text-gray-600 mb-6">Belajar Rumah Adat Indonesia sambil bermain!</p>
+
+    <button onclick="createRoom()" class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-2 rounded-lg mb-4 hover:scale-105 transition transform duration-200">
+       Buat Ruangan Baru
+    </button>
+
+    <input
+      type="text"
+      id="playerName"
+      class="w-full p-2 border border-blue-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+      placeholder="Nama kamu"
+    />
+
+    <input
+      type="text"
+      id="roomCode"
+      class="w-full p-2 border border-blue-300 rounded-md mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400"
+      placeholder="Kode ruangan untuk bergabung"
+    />
+
+    <button id="masukBtn" class="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-2 rounded-lg hover:scale-105 transition transform duration-200">
+       Masuk
+    </button>
+  </div>
+
+  <script>
+    function createRoom() {
+      const name = document.getElementById("playerName").value.trim();
+     
+      localStorage.setItem("playerName", name);
+      sessionStorage.setItem("originalName", name); // backup
+      window.location.href = "buat-ruang.html";
+    }
+
+    document.getElementById("masukBtn").addEventListener("click", joinRoom);
+
+    async function joinRoom() {
+      const name = document.getElementById("playerName").value.trim();
+      const roomCode = document.getElementById("roomCode").value.trim().toUpperCase();
+
+      if (!name || !roomCode) {
+        alert("Masukkan nama dan kode ruangan!");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3000/api/check-room", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomCode })
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          alert("Kode ruangan tidak ditemukan!");
+          return;
+        }
+
+        localStorage.setItem("playerName", name);
+        sessionStorage.setItem("originalName", name); // backup
+        localStorage.setItem("roomCode", roomCode);
+        window.location.href = "game.html";
+      } catch (err) {
+        console.error("Gagal terhubung ke server:", err);
+        alert("Gagal terhubung ke server.");
+      }
+    }
+  </script>
+</body>
+</html>

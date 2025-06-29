@@ -1,0 +1,70 @@
+/* Background gambar rumah adat */
+body {
+    background-image: url('assets/BG1.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Lapisan kabur dan semi-transparan */
+  body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.25); /* efek gelap */
+    backdrop-filter: blur(4px);     /* efek kabur */
+    z-index: 0;
+  }
+  
+  /* Pastikan konten tetap di atas lapisan efek */
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Tambahan efek animasi masuk */
+  @keyframes slideFade {
+    from {
+      opacity: 0;
+      transform: translateY(15px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-in {
+    animation: slideFade 0.6s ease-in-out both;
+  }
+
+  /* Responsive Utilities */
+@media (max-width: 768px) {
+  .responsive-container {
+    padding: 1rem;
+    width: 95%;
+    max-width: 100%;
+    font-size: 14px;
+  }
+
+  input, button, select {
+    font-size: 14px;
+    padding: 0.6rem 0.8rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  h4 {
+    font-size: 1rem;
+  }
+}
+
+  

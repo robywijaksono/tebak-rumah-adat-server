@@ -1,0 +1,92 @@
+/* === Leaderboard Responsive Style === */
+
+body {
+  background: url('assets/BG2.png') no-repeat center center fixed;
+  background-size: cover;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.blur-bg {
+  backdrop-filter: blur(5px);
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.podium-box {
+  width: 100px;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  border-radius: 16px;
+  padding-bottom: 16px;
+  position: relative;
+  color: #333;
+}
+
+.gold   { background-color: #facc15; }
+.silver { background-color: #cbd5e1; height: 150px; }
+.bronze { background-color: #f97316; height: 130px; }
+
+.podium-rank {
+  position: absolute;
+  top: 8px;
+  font-size: 1.5rem;
+}
+
+.podium-box div {
+  margin-top: 4px;
+}
+
+ul#leaderboardList {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 1rem;
+}
+
+ul#leaderboardList li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #ddd;
+}
+
+button, a {
+  transition: all 0.2s ease-in-out;
+  font-weight: bold;
+}
+
+button:hover {
+  transform: scale(1.05);
+}
+
+a:hover {
+  background-color: #e2e8f0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .podium-box {
+    width: 80px;
+    height: 140px;
+  }
+
+  .podium-rank {
+    font-size: 1.2rem;
+  }
+
+  .blur-bg {
+    padding: 1rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  h2 {
+    font-size: 1.1rem;
+  }
+}
